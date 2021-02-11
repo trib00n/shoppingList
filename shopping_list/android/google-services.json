@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "771560125155",
+    "project_id": "map-shoppinglist",
+    "storage_bucket": "map-shoppinglist.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:771560125155:android:9a397458574992fb39cbd6",
+        "android_client_info": {
+          "package_name": "de.itschwalb.map_shoppinglist"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "771560125155-ntqb2i9th27gt46spsu5gtj7o58vbcq3.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDdCyp_GTSOdMem8mniu2bkAJvKYLmQm-0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "771560125155-ntqb2i9th27gt46spsu5gtj7o58vbcq3.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
