@@ -19,7 +19,9 @@ class ShoppingList extends StatefulWidget {
 class _ShoppingListState extends State<ShoppingList> {
   int _page = 0;
   String sharedUid = "";
+  List remoteList;
   var callOnce = true;
+  bool ready = false;
   Function floatingActionButtonFunction;
   FirebaseUser user;
   DatabaseService databaseService;
@@ -28,6 +30,8 @@ class _ShoppingListState extends State<ShoppingList> {
   Widget bodyFunction() {
     switch (_page) {
       case 0:
+        ready = false;
+        callOnce = true;
         floatingActionButtonFunction = newShoppingList;
         return FutureBuilder(
             future: connectToFirebase(),
@@ -69,63 +73,90 @@ class _ShoppingListState extends State<ShoppingList> {
         break;
       case 1:
         floatingActionButtonFunction = newShare;
+        if (callOnce) {
+          databaseService.getSharedUid().then((value) async {
+            setState(() {
+              remoteList = value.data["sharedUsers"];
+              ready = true;
+              callOnce = false;
+            });
+          });
+        }
         return FutureBuilder(
             future: connectToFirebase(),
             builder: (BuildContext context, AsyncSnapshot<void> snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return Center(child: CircularProgressIndicator());
               } else {
-                if (callOnce) {
-                  databaseService.getSharedUid().then((value) async {
-                    setState(() {
-                      sharedUid = value.data["sharedUser"];
-                      callOnce = false;
-                    });
+                StreamBuilder<QuerySnapshot> streamB;
+                if (ready) {
+                  remoteList.forEach((element) {
+                    sharedUid = element["remoteUid"].toString();
+                    Column(
+                      children: [
+                        streamB = new StreamBuilder<QuerySnapshot>(
+                          stream: db
+                              .collection('ShoppingLists')
+                              .document(sharedUid)
+                              .collection("list")
+                              .snapshots(),
+                          builder: (BuildContext context, snapshot) {
+                            if (!snapshot.hasData) {
+                              return Center(child: CircularProgressIndicator());
+                            } else {
+                              var doc = snapshot.data.documents;
+                              return ListView.builder(
+                                  itemCount: doc.length,
+                                  itemBuilder: (context, i) {
+                                    if (element["listUid"].toString() ==
+                                        doc[i].documentID) {
+                                      return ShoppingListItem(
+                                          doc[i].data['name'],
+                                          doc[i].data['checked'],
+                                          () => deleteShare(sharedUid, i),
+                                          () => toggleDone(
+                                              doc[i].documentID,
+                                              doc[i].data['checked'],
+                                              sharedUid),
+                                          sharedUid,
+                                          databaseService,
+                                          db,
+                                          doc[i].documentID,
+                                          context);
+                                    } else
+                                      return Container(
+                                        height: 45,
+                                        color: Colors.red,
+                                        child: Center(
+                                          child: Text(
+                                            'Keine geteile Einkaufsliste gefunden!',
+                                            style:
+                                                TextStyle(color: Colors.white),
+                                          ),
+                                        ),
+                                      );
+                                  });
+                            }
+                          },
+                        ),
+                      ],
+                    );
                   });
                 }
-                return new StreamBuilder<QuerySnapshot>(
-                  stream: db
-                      .collection('ShoppingLists')
-                      .document(sharedUid)
-                      .collection("list")
-                      .snapshots(),
-                  builder: (BuildContext context, snapshot) {
-                    if (!snapshot.hasData) {
-                      return Center(child: CircularProgressIndicator());
-                    } else {
-                      var doc = snapshot.data.documents;
-                      return ListView.builder(
-                          itemCount: doc.length,
-                          itemBuilder: (context, i) {
-                            if (doc[i].data['sharedUid'] == user.uid &&
-                                sharedUid != "") {
-                              return ShoppingListItem(
-                                  doc[i].data['name'],
-                                  doc[i].data['checked'],
-                                  () =>
-                                      deleteShare(sharedUid, doc[i].documentID),
-                                  () => toggleDone(doc[i].documentID,
-                                      doc[i].data['checked'], sharedUid),
-                                  sharedUid,
-                                  databaseService,
-                                  db,
-                                  doc[i].documentID,
-                                  context);
-                            } else
-                              return Container(
-                                height: 45,
-                                color: Colors.red,
-                                child: Center(
-                                  child: Text(
-                                    'Keine geteile Einkaufsliste gefunden!',
-                                    style: TextStyle(color: Colors.white),
-                                  ),
-                                ),
-                              );
-                          });
-                    }
-                  },
-                );
+                if (streamB != null) {
+                  return streamB;
+                } else {
+                  return Container(
+                    height: 45,
+                    color: Colors.red,
+                    child: Center(
+                      child: Text(
+                        'Keine geteile Einkaufsliste gefunden!',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    ),
+                  );
+                }
               }
             });
         break;
@@ -134,16 +165,25 @@ class _ShoppingListState extends State<ShoppingList> {
 
   void addShoppingList(String listName) {
     databaseService.addShoppingList(listName);
+
     Navigator.pop(context);
   }
 
   void addShare(String userID, String listID) {
     databaseService.setShare(userID, listID);
     Navigator.pop(context);
+    setState(() {
+      ready = false;
+      callOnce = true;
+    });
   }
 
-  void deleteShare(String userID, String listID) {
-    databaseService.deleteShare(userID, listID);
+  void deleteShare(String userID, int arrayID) {
+    databaseService.deleteShare(userID, arrayID);
+    setState(() {
+      ready = false;
+      callOnce = true;
+    });
   }
 
   void deleteShoppingList(String documentID) {
@@ -166,7 +206,7 @@ class _ShoppingListState extends State<ShoppingList> {
     showDialog<AlertDialog>(
         context: context,
         builder: (BuildContext context) {
-          return AddShareDialog(addShare);
+          return AddShareDialog(addShare, databaseService);
         });
   }
 

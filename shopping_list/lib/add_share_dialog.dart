@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'database.dart';
 
 class AddShareDialog extends StatefulWidget {
   final Function(String userIDtxt, String listIDtxt) addItem;
-  const AddShareDialog(this.addItem);
+  final DatabaseService databaseService;
+  const AddShareDialog(this.addItem, this.databaseService);
 
   @override
   _AddShareDialogState createState() => _AddShareDialogState();
@@ -13,9 +15,12 @@ class _AddShareDialogState extends State<AddShareDialog> {
   String userIDtxt;
   String listIDtxt;
 
-  void save() {
+  void save() async {
     if (formKey.currentState.validate()) {
-      widget.addItem(userIDtxt, listIDtxt);
+      if ((await widget.databaseService
+          .checkIfRemoteExists(userIDtxt.trim(), listIDtxt.trim()))) {
+        widget.addItem(userIDtxt, listIDtxt);
+      }
     }
   }
 
